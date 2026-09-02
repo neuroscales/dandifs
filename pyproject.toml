@@ -9,20 +9,32 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 dependencies = [
-    "fsspec[https] >= 2021.0.0",    # First stable release
-    "universal_pathlib",            # UPath
-    "requests",                     # HTTP requests
-    "tenacity",                     # Retry requests
-    "yarl",                         # Yet Another URL Library
-    "keyring != 23.9.0",            # Authentification
-    "python-dateutil",              # Parse API dates
+    "fsspec[http] >= 2022.1.0",     # async filesystem base + HTTP backend (aiohttp)
+    "aiohttp",                      # async HTTP client (also pulled by fsspec[http])
+    "typing_extensions",            # Self/TypeAlias etc. on Python < 3.11
 ]
 dynamic = ["version"]
+
+[project.optional-dependencies]
+# Credential storage for private / embargoed dandisets. Imported lazily; the
+# library works fully without it.
+auth = [
+    "keyring != 23.9.0",
+    "keyrings.alt",
+    "pycryptodomex",
+]
+# Offline test suite (all HTTP mocked).
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "aioresponses",
+]
 
 [project.urls]
 Homepage = "https://github.com/balbasty/dandifs"
@@ -36,72 +48,57 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["dandifs*"]
+
 [tool.versioningit]
 default-version = "0+unknown"
 
 [tool.versioningit.format]
-# Same format as versioneer
 distance = "{base_version}+{distance}.{vcs}{rev}"
 dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 
 [tool.versioningit.write]
-file = "dandfs/_version.py"
+file = "dandifs/_version.py"
 
 [tool.pytest.ini_options]
-pythonpath = [
-  "."
-]
-testpaths = [
-  "dandfs/tests"
-]
+pythonpath = ["."]
+testpaths = ["dandifs/tests"]
+asyncio_mode = "auto"
 
 [tool.mypy]
 ignore_missing_imports = true
 
 [tool.ruff]
 exclude = [
-  ".bzr",
-  ".direnv",
-  ".eggs",
   ".git",
-  ".git-rewrite",
-  ".hg",
   ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".pytype",
   ".ruff_cache",
-  ".svn",
   ".tox",
   ".venv",
-  "__pypackages__",
   "_build",
-  "buck-out",
   "build",
   "dist",
-  "node_modules",
-  "venv"
+  "venv",
 ]
 line-length = 88
 indent-width = 4
 src = ["."]
-target-version = "py310"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = ["ANN", "D", "E", "F", "I"]
 ignore = [
   "ANN002",  # args should not be annotated
   "ANN003",  # kwargs should not be annotated
-  "ANN101",  # self should not be annotated.
-  "ANN102",  # cls should not be annotated.
-  "ANN401",  # Dynamically typed expressions (typing.Any)
-  "D105",    # Missing docstring in magic method
-  "D200",    # One line docstrings should fit one line
-  "D202",    # No blank line between docstring and body of a function
-  "D205",    # 1 blank line required between summary line and description -> triggered in __init__ docstrings
-  "D401",    # First line of docstring must be imperative
-  "D404",    # Forst word of docstring must not be "This"
+  "ANN401",  # dynamically typed expressions (typing.Any)
+  "D105",    # missing docstring in magic method
+  "D200",    # one line docstrings should fit one line
+  "D202",    # no blank line between docstring and body of a function
+  "D205",    # 1 blank line required between summary line and description
+  "D401",    # first line of docstring must be imperative
+  "D404",    # first word of docstring must not be "This"
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -111,7 +108,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"ngtools/tests/*.py" = []
+"dandifs/tests/*.py" = ["D", "ANN"]
 
 [tool.ruff.format]
 quote-style = "double"
