@@ -95,6 +95,9 @@ exclude = [
   "dist",
   "venv",
 ]
+# ruff >= 0.16 formats Python code blocks inside Markdown; keep ruff scoped to
+# Python only so it doesn't reflow the hand-aligned examples in the README.
+extend-exclude = ["*.md"]
 line-length = 88
 indent-width = 4
 src = ["."]
