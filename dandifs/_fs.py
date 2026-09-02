@@ -8,6 +8,7 @@ and implements the ``_``-prefixed coroutines (``_ls``, ``_info``, ``_cat_file``,
 delegated to fsspec's :class:`~fsspec.implementations.http.HTTPFileSystem`,
 which shares the same event loop.
 """
+
 import re
 import weakref
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -172,8 +173,7 @@ class DandiFileSystem(AsyncFileSystem):
         """
         super().__init__(asynchronous=asynchronous, loop=loop)
         self._instance = (
-            get_instance(instance) if instance is not None
-            else get_instance("dandi")
+            get_instance(instance) if instance is not None else get_instance("dandi")
         )
         self._dandiset_id = dandiset
         self._version_id = version
@@ -200,9 +200,7 @@ class DandiFileSystem(AsyncFileSystem):
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(**self._client_kwargs)
             if not self.asynchronous:
-                weakref.finalize(
-                    self, self._close_session, self._loop, self._session
-                )
+                weakref.finalize(self, self._close_session, self._loop, self._session)
         return self._session
 
     @staticmethod
@@ -331,19 +329,16 @@ class DandiFileSystem(AsyncFileSystem):
     async def _prepare(
         self, path: Any, glob: bool = False
     ) -> Tuple[DandiInstance, str, str, str, DandiClient, Any]:
-        instance, dandiset_id, version_id, location = self._parse_path(
-            path, glob=glob
-        )
+        instance, dandiset_id, version_id, location = self._parse_path(path, glob=glob)
         if dandiset_id is None:
             raise FileNotFoundError(
-                "No dandiset in {!r}; instance-level listing is not supported"
-                .format(path)
+                "No dandiset in {!r}; instance-level listing is not supported".format(
+                    path
+                )
             )
         session = await self.set_session()
         client = await self._client_for(instance)
-        version_id = await client.resolve_version(
-            session, dandiset_id, version_id
-        )
+        version_id = await client.resolve_version(session, dandiset_id, version_id)
         return instance, dandiset_id, version_id, location, client, session
 
     @staticmethod
@@ -358,9 +353,7 @@ class DandiFileSystem(AsyncFileSystem):
         url = _s3_url(asset) or _download_url(asset)
         if url:
             return url
-        return "{}/assets/{}/download/".format(
-            client.api_url, asset.get("asset_id")
-        )
+        return "{}/assets/{}/download/".format(client.api_url, asset.get("asset_id"))
 
     async def _find(
         self,
@@ -411,9 +404,7 @@ class DandiFileSystem(AsyncFileSystem):
             )
 
         # Not an asset and not a directory prefix: maybe inside a Zarr.
-        return await self._find_in_zarr(
-            client, session, dandiset_id, version_id, loc
-        )
+        return await self._find_in_zarr(client, session, dandiset_id, version_id, loc)
 
     async def _find_in_zarr(
         self,
@@ -436,7 +427,7 @@ class DandiFileSystem(AsyncFileSystem):
             if asset is None:
                 continue
             if _is_zarr(asset):
-                remainder = loc[len(prefix):].lstrip("/")
+                remainder = loc[len(prefix) :].lstrip("/")
                 return _Node(
                     "zarr",
                     path=loc,
@@ -451,12 +442,15 @@ class DandiFileSystem(AsyncFileSystem):
         return _Node("missing", path=loc)
 
     async def _resolve_url(self, path: Any) -> str:
-        instance, dandiset_id, version_id, location, client, session = (
-            await self._prepare(path)
-        )
-        node = await self._find(
-            client, session, dandiset_id, version_id, location
-        )
+        (
+            instance,
+            dandiset_id,
+            version_id,
+            location,
+            client,
+            session,
+        ) = await self._prepare(path)
+        node = await self._find(client, session, dandiset_id, version_id, location)
         return self._require_file_url(node, path)
 
     def _require_file_url(self, node: _Node, path: Any) -> str:
@@ -495,18 +489,19 @@ class DandiFileSystem(AsyncFileSystem):
     # ------------------------------------------------------------------
 
     async def _info(self, path: Any, **kwargs: Any) -> dict:  # noqa: D102
-        instance, dandiset_id, version_id, location, client, session = (
-            await self._prepare(path)
-        )
-        node = await self._find(
-            client, session, dandiset_id, version_id, location
-        )
+        (
+            instance,
+            dandiset_id,
+            version_id,
+            location,
+            client,
+            session,
+        ) = await self._prepare(path)
+        node = await self._find(client, session, dandiset_id, version_id, location)
         name = self._name(instance, dandiset_id, version_id, node.path)
         if node.kind == "missing":
             raise FileNotFoundError(str(path))
-        if node.kind == "directory" or (
-            node.kind == "zarr" and node.zarr_key == ""
-        ):
+        if node.kind == "directory" or (node.kind == "zarr" and node.zarr_key == ""):
             return {"name": name, "size": 0, "type": "directory"}
         if node.kind == "file":
             return {
@@ -527,15 +522,18 @@ class DandiFileSystem(AsyncFileSystem):
 
     async def _exists(self, path: Any, **kwargs: Any) -> bool:  # noqa: D102
         try:
-            instance, dandiset_id, version_id, location, client, session = (
-                await self._prepare(path)
-            )
+            (
+                instance,
+                dandiset_id,
+                version_id,
+                location,
+                client,
+                session,
+            ) = await self._prepare(path)
         except (FileNotFoundError, ValueError):
             return False
         try:
-            node = await self._find(
-                client, session, dandiset_id, version_id, location
-            )
+            node = await self._find(client, session, dandiset_id, version_id, location)
         except HTTP404Error:
             return False
         if node.kind == "missing":
@@ -548,12 +546,15 @@ class DandiFileSystem(AsyncFileSystem):
     async def _ls(  # noqa: D102
         self, path: Any, detail: bool = True, **kwargs: Any
     ) -> Union[List[dict], List[str]]:
-        instance, dandiset_id, version_id, location, client, session = (
-            await self._prepare(path)
-        )
-        node = await self._find(
-            client, session, dandiset_id, version_id, location
-        )
+        (
+            instance,
+            dandiset_id,
+            version_id,
+            location,
+            client,
+            session,
+        ) = await self._prepare(path)
+        node = await self._find(client, session, dandiset_id, version_id, location)
         if node.kind == "missing":
             raise FileNotFoundError(str(path))
         if node.kind == "file":
@@ -594,20 +595,24 @@ class DandiFileSystem(AsyncFileSystem):
             name = self._name(instance, dandiset_id, version_id, entry_path)
             asset = entry.get("asset")
             if asset:
-                entries.append({
-                    "name": name,
-                    "size": asset.get("size", entry.get("total_size")),
-                    "type": "file",
-                    "created": asset.get("created"),
-                    "modified": asset.get("modified"),
-                    "asset_id": asset.get("asset_id"),
-                })
+                entries.append(
+                    {
+                        "name": name,
+                        "size": asset.get("size", entry.get("total_size")),
+                        "type": "file",
+                        "created": asset.get("created"),
+                        "modified": asset.get("modified"),
+                        "asset_id": asset.get("asset_id"),
+                    }
+                )
             else:
-                entries.append({
-                    "name": name,
-                    "size": entry.get("total_size"),
-                    "type": "directory",
-                })
+                entries.append(
+                    {
+                        "name": name,
+                        "size": entry.get("total_size"),
+                        "type": "directory",
+                    }
+                )
         return entries
 
     async def _ls_zarr(
@@ -629,7 +634,7 @@ class DandiFileSystem(AsyncFileSystem):
             key = entry.get("Key", "")
             if not key.startswith(base_slash):
                 continue
-            rest = key[len(base_slash):]
+            rest = key[len(base_slash) :]
             if not rest:
                 continue
             segment = rest.split("/", 1)[0]
@@ -641,32 +646,41 @@ class DandiFileSystem(AsyncFileSystem):
             full = node.zarr_root + "/" + child_key
             name = self._name(instance, dandiset_id, version_id, full)
             if is_file:
-                entries.append({
-                    "name": name,
-                    "size": entry.get("Size"),
-                    "type": "file",
-                })
+                entries.append(
+                    {
+                        "name": name,
+                        "size": entry.get("Size"),
+                        "type": "file",
+                    }
+                )
             else:
-                entries.append({
-                    "name": name, "size": None, "type": "directory",
-                })
+                entries.append(
+                    {
+                        "name": name,
+                        "size": None,
+                        "type": "directory",
+                    }
+                )
         return entries
 
     async def _glob(  # noqa: D102
         self, path: Any, maxdepth: Optional[int] = None, **kwargs: Any
     ) -> List[str]:
         order = kwargs.pop("order", None)
-        instance, dandiset_id, version_id, pattern, client, session = (
-            await self._prepare(path, glob=True)
-        )
+        (
+            instance,
+            dandiset_id,
+            version_id,
+            pattern,
+            client,
+            session,
+        ) = await self._prepare(path, glob=True)
         names: List[str] = []
         async for asset in client.assets(
             session, dandiset_id, version_id, glob=pattern, order=order
         ):
             names.append(
-                self._name(
-                    instance, dandiset_id, version_id, asset.get("path", "")
-                )
+                self._name(instance, dandiset_id, version_id, asset.get("path", ""))
             )
         return names
 

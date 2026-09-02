@@ -1,4 +1,5 @@
 """Shared fixtures and an offline fake DANDI archive for tests."""
+
 import fnmatch
 import json
 import re
@@ -115,7 +116,7 @@ def _paths_callback(url, **kwargs):
     for p, a in _ASSETS.items():
         if not p.startswith(prefix):
             continue
-        rest = p[len(prefix):]
+        rest = p[len(prefix) :]
         seg = rest.split("/", 1)[0]
         full = prefix + seg
         is_file = rest == seg
@@ -124,17 +125,19 @@ def _paths_callback(url, **kwargs):
     results = []
     for full, (is_file, p, size) in children.items():
         if is_file:
-            results.append({
-                "path": full,
-                "total_size": size,
-                "asset": {
-                    "asset_id": _ASSETS[p]["asset_id"],
-                    "path": p,
-                    "size": size,
-                    "created": "2021-01-01T00:00:00Z",
-                    "modified": "2021-01-02T00:00:00Z",
-                },
-            })
+            results.append(
+                {
+                    "path": full,
+                    "total_size": size,
+                    "asset": {
+                        "asset_id": _ASSETS[p]["asset_id"],
+                        "path": p,
+                        "size": size,
+                        "created": "2021-01-01T00:00:00Z",
+                        "modified": "2021-01-02T00:00:00Z",
+                    },
+                }
+            )
         else:
             results.append({"path": full, "total_size": size, "asset": None})
     return CallbackResult(

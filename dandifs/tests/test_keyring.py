@@ -1,4 +1,5 @@
 """Tests for lazy auth/token resolution order."""
+
 import dandifs._keyring as kr
 from dandifs._keyring import resolve_token
 

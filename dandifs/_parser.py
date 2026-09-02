@@ -20,6 +20,7 @@ Supported forms
 The ``<path>`` component may descend *into* a Zarr asset; resolving that is the
 filesystem's job, not the parser's.
 """
+
 import re
 from dataclasses import dataclass
 from typing import Optional
@@ -52,9 +53,7 @@ class ParsedDandiURL:
 
 
 _DANDISET_GRP = "(?P<dandiset_id>{})".format(DANDISET_ID_REGEX)
-_SERVER_GRP = (
-    r"(?P<server>(?P<protocol>https?)://(?P<hostname>[^/]+)/(api/)?)"
-)
+_SERVER_GRP = r"(?P<server>(?P<protocol>https?)://(?P<hostname>[^/]+)/(api/)?)"
 # Optional version suffix: either ``/versions/<ver>`` or a bare ``/<ver>``.
 _VER_SUFFIX = r"(/versions?)?(/(?P<version>{ver}))?".format(ver=VERSION_REGEX)
 
@@ -158,18 +157,10 @@ def parse_dandi_url(url: str, glob: bool = False) -> ParsedDandiURL:
                 instance, dandiset_id, version_id, glob=unquote(glob_param)
             )
         if asset_id:
-            return ParsedDandiURL(
-                instance, dandiset_id, version_id, asset_id=asset_id
-            )
+            return ParsedDandiURL(instance, dandiset_id, version_id, asset_id=asset_id)
         if location:
             if glob:
-                return ParsedDandiURL(
-                    instance, dandiset_id, version_id, glob=location
-                )
-            return ParsedDandiURL(
-                instance, dandiset_id, version_id, path=location
-            )
+                return ParsedDandiURL(instance, dandiset_id, version_id, glob=location)
+            return ParsedDandiURL(instance, dandiset_id, version_id, path=location)
         return ParsedDandiURL(instance, dandiset_id, version_id)
-    raise UnknownURLError(
-        "Do not know how to parse DANDI URL {!r}".format(url)
-    )
+    raise UnknownURLError("Do not know how to parse DANDI URL {!r}".format(url))
