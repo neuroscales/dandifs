@@ -701,9 +701,5 @@ class DandiFileSystem(AsyncFileSystem):
         )
 
 
-# Backwards-compatible alias.
-RemoteDandiFileSystem = DandiFileSystem
-
-
 if "dandi" not in known_implementations:
     register_implementation("dandi", DandiFileSystem)

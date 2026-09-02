@@ -33,8 +33,8 @@ dandi://<instance>/<dandiset>[@<version>]/<path>
 
 ## Public surface
 
-The **only** public API is the filesystem class, `DandiFileSystem` (with the
-alias `RemoteDandiFileSystem`). Everything else is internal.
+The **only** public API is the filesystem class, `DandiFileSystem`.
+Everything else is internal.
 
 ## Usage
 
@@ -78,8 +78,14 @@ e.g. `zarr.open("dandi://dandi/<id>/path/to/image.zarr")`.
 
 ### Async
 
-`DandiFileSystem` is a real async filesystem. Pass `asynchronous=True` and
-await the coroutine methods (`_ls`, `_info`, `_cat_file`, `_exists`, `_glob`):
+`DandiFileSystem` is a real async filesystem. Following fsspec's
+[`AsyncFileSystem`](https://filesystem-spec.readthedocs.io/en/latest/async.html)
+convention, the asynchronous API **is** the set of underscore-prefixed
+coroutine methods (`_ls`, `_info`, `_cat_file`, `_cat`, `_exists`, `_glob`,
+`_get`, ...) — the same pattern used by `s3fs`, `gcsfs`, and every other
+async fsspec backend. The public, non-underscore names (`ls`, `cat_file`,
+...) are the *synchronous* wrappers fsspec generates from those coroutines.
+Pass `asynchronous=True` and `await` the coroutines:
 
 ```python
 fs = DandiFileSystem("000026", asynchronous=True)
