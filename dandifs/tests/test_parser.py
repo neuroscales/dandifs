@@ -1,4 +1,5 @@
 """Tests for URL parsing (offline, no I/O)."""
+
 import pytest
 
 from dandifs._exceptions import UnknownURLError

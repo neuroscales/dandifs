@@ -11,6 +11,7 @@ owning filesystem creates and manages the session (on the fsspec event loop)
 and passes it into every call. The client only holds the API base URL and the
 (lazily resolved) authentication token.
 """
+
 import asyncio
 import json
 from typing import Any, AsyncIterator, Dict, Optional
@@ -81,7 +82,7 @@ class DandiClient:
                         self._token = token
                         continue
                 if status in RETRY_STATUSES:
-                    delay = min(0.5 * (2 ** attempt), 10.0)
+                    delay = min(0.5 * (2**attempt), 10.0)
                     LOG.debug("Status %d for %s; retrying in %.1fs", status, url, delay)
                     await asyncio.sleep(delay)
                     continue
@@ -95,9 +96,7 @@ class DandiClient:
                 text = _decode(body).strip()
                 return json.loads(text) if text else None
         raise FailedToConnectError(
-            "Request to {} failed after {} attempts".format(
-                url, REQUEST_RETRIES
-            )
+            "Request to {} failed after {} attempts".format(url, REQUEST_RETRIES)
         )
 
     async def get(
@@ -127,9 +126,7 @@ class DandiClient:
 
     async def get_dandiset(self, session: Any, dandiset_id: str) -> dict:
         """Return the dandiset record."""
-        return await self.get(
-            session, "/dandisets/{}/".format(dandiset_id)
-        )
+        return await self.get(session, "/dandisets/{}/".format(dandiset_id))
 
     async def resolve_version(
         self, session: Any, dandiset_id: str, version_id: Optional[str]

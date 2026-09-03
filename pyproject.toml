@@ -34,6 +34,15 @@ test = [
     "pytest",
     "pytest-asyncio",
     "aioresponses",
+    # aioresponses (<=0.7.9) has not adapted to the ClientResponse changes in
+    # aiohttp 3.14, so cap aiohttp for the *test environment only*. The library
+    # itself imposes no aiohttp upper bound.
+    "aiohttp<3.14",
+]
+# Linters run by CI (and usable locally / via pre-commit).
+lint = [
+    "ruff==0.16.5",
+    "codespell",
 ]
 
 [project.urls]
@@ -67,6 +76,10 @@ pythonpath = ["."]
 testpaths = ["dandifs/tests"]
 asyncio_mode = "auto"
 
+[tool.codespell]
+skip = "./.git,./OTHER_LICENSES,./LICENSE,./dandifs/_version.py"
+check-filenames = true
+
 [tool.mypy]
 ignore_missing_imports = true
 
@@ -82,6 +95,9 @@ exclude = [
   "dist",
   "venv",
 ]
+# ruff >= 0.16 formats Python code blocks inside Markdown; keep ruff scoped to
+# Python only so it doesn't reflow the hand-aligned examples in the README.
+extend-exclude = ["*.md"]
 line-length = 88
 indent-width = 4
 src = ["."]

@@ -1,4 +1,5 @@
 """Tests for DandiFileSystem against the mocked archive."""
+
 import pytest
 
 from dandifs import DandiFileSystem
@@ -160,9 +161,7 @@ async def test_zarr_key_directory_info(mock_archive):
 async def test_full_url_paths(mock_archive):
     fs = DandiFileSystem(asynchronous=True, skip_instance_cache=True)
     try:
-        data = await fs._cat_file(
-            "dandi://dandi/000026/sub-01/anat/scan.json"
-        )
+        data = await fs._cat_file("dandi://dandi/000026/sub-01/anat/scan.json")
     finally:
         await _close(fs)
     assert data == b'{"hello": 1}'

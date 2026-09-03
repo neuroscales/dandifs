@@ -15,6 +15,7 @@ Token resolution order (see :func:`resolve_token`):
 The ``keyring`` stack is imported lazily inside ``try``/``except`` so the
 library works fully without it.
 """
+
 import os
 from typing import Optional
 

@@ -3,6 +3,7 @@
 #   dandi/exceptions.py, which is distributed under the Apache 2.0 license.
 #   See: https://github.com/dandi/dandi-cli/blob/master/LICENSE
 """Internal exceptions for :mod:`dandifs`."""
+
 from typing import Optional
 
 

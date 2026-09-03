@@ -1,4 +1,5 @@
 """Tests for the instance registry and (mocked) discovery."""
+
 import aiohttp
 import pytest
 from aioresponses import aioresponses

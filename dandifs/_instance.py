@@ -12,6 +12,7 @@ server. A small registry of well-known instances is provided, and arbitrary
 of a bare server URL via its ``/info/`` endpoint is available as an *async*
 helper and is never performed at import time.
 """
+
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Union
@@ -70,10 +71,7 @@ known_instances: Dict[str, DandiInstance] = {
 
 #: Reverse mapping (URL -> instance name) for all known URLs.
 known_instances_rev: Dict[str, str] = {
-    url: name
-    for name, inst in known_instances.items()
-    for url in inst.urls()
-    if url
+    url: name for name, inst in known_instances.items() for url in inst.urls() if url
 }
 
 
@@ -161,9 +159,7 @@ def get_instance(spec: Union[str, DandiInstance]) -> DandiInstance:
     if spec.lower().startswith(("http://", "https://")):
         url = spec.rstrip("/")
         # Match the full URL, or its base, against known instances.
-        name = known_instances_rev.get(url) or known_instances_rev.get(
-            _base_url(url)
-        )
+        name = known_instances_rev.get(url) or known_instances_rev.get(_base_url(url))
         if name is not None:
             return known_instances[name]
         host = urlsplit(url).netloc or url

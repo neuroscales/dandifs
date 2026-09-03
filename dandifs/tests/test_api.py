@@ -1,4 +1,5 @@
 """Tests for the async REST client, including lazy auth-on-401."""
+
 import aiohttp
 from aioresponses import aioresponses
 
@@ -29,14 +30,8 @@ async def test_lazy_auth_on_401(monkeypatch):
     assert rec["identifier"] == "000026"
     assert client._token == "secret-token"
     # The retried request carried the Authorization header.
-    requests = [
-        req
-        for key, req in m.requests.items()
-        for req in req
-    ]
-    auth_headers = [
-        r.kwargs.get("headers", {}).get("Authorization") for r in requests
-    ]
+    requests = [req for key, req in m.requests.items() for req in req]
+    auth_headers = [r.kwargs.get("headers", {}).get("Authorization") for r in requests]
     assert "token secret-token" in auth_headers
 
 

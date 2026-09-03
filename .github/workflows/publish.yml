@@ -1,0 +1,60 @@
+# Publishes dandifs to PyPI when a GitHub Release is published.
+#
+# Uses PyPI Trusted Publishing (OIDC) -- no API token/secret is stored in the
+# repo. Before the first release, configure a trusted publisher on PyPI:
+#   PyPI project -> Settings -> Publishing -> Add a pending/trusted publisher
+#     Owner:        balbasty
+#     Repository:   dandifs
+#     Workflow:     publish.yml
+#     Environment:  pypi
+# See https://docs.pypi.org/trusted-publishers/ for details.
+#
+# The version is derived from the release's git tag by versioningit, so tag
+# releases as e.g. `v0.1.0` (or `0.1.0`, per your versioningit tag config).
+
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so versioningit derives the release version.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Check metadata
+        run: |
+          python -m pip install --upgrade twine
+          twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Required for Trusted Publishing (OIDC).
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

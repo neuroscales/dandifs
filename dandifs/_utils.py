@@ -3,6 +3,7 @@
 #   dandi/utils.py, which is distributed under the Apache 2.0 license.
 #   See: https://github.com/dandi/dandi-cli/blob/master/LICENSE
 """Internal utilities for :mod:`dandifs`."""
+
 import logging
 import os
 import platform

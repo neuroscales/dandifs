@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff + codespell)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install linters
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[lint]"
+      - name: ruff check
+        run: ruff check --output-format=github .
+      - name: ruff format --check
+        run: ruff format --check .
+      - name: codespell
+        run: codespell
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The mocked test suite relies on aioresponses, which requires
+        # Python >= 3.9 (its code subscripts collections.abc types at import,
+        # a runtime error on 3.8). Python 3.8 support is covered by the
+        # `smoke` job below instead.
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so versioningit can derive the version.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package + test deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[test]"
+      - name: Run tests
+        run: pytest -q
+
+  smoke:
+    name: Import smoke (Python 3.8)
+    # aioresponses (and thus the mocked test suite) cannot run on 3.8, so the
+    # 3.8 floor is guarded by importing and constructing the filesystem with
+    # the core dependencies only -- no network, no test tooling.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+      - name: Install package (core deps only)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Import + construct
+        run: |
+          python -c "
+          import dandifs
+          from dandifs import DandiFileSystem
+          import fsspec
+          fs = DandiFileSystem('000026', skip_instance_cache=True)
+          assert fs.dandiset == '000026'
+          assert fs._session is None
+          assert fsspec.get_filesystem_class('dandi') is DandiFileSystem
+          print('smoke OK; dandifs', dandifs.__version__)
+          "

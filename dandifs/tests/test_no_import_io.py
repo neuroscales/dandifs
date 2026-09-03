@@ -1,4 +1,5 @@
 """Ensure importing dandifs performs no network I/O and constructs no client."""
+
 import socket
 import subprocess
 import sys
