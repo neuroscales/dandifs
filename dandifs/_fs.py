@@ -240,9 +240,27 @@ class DandiFileSystem(AsyncFileSystem):
             **kwargs,
         )
 
-    def s3_url(self, path: str) -> str:
-        """Return the direct (S3/HTTPS) byte URL backing ``path``."""
-        return sync(self.loop, self._resolve_url, path)
+    def s3_url(self, path: str, validate: bool = True) -> str:
+        """Return the direct (S3/HTTPS) URL backing ``path``.
+
+        Unlike byte reads, this also resolves a Zarr root to its S3 store base
+        (a prefix ending in ``/``); only a plain (non-Zarr) directory raises
+        :class:`IsADirectoryError`.
+
+        Parameters
+        ----------
+        validate:
+            When ``True`` (default), a location inside a Zarr is checked against
+            the store's file listing: a file yields its exact S3 URL, a
+            directory yields the S3 prefix with a trailing ``/``, and a location
+            that does not exist raises :class:`FileNotFoundError`. When
+            ``False``, the URL is built from the path alone with no listing
+            request: any in-Zarr path yields ``base + key`` verbatim (a
+            subdirectory gets no trailing slash and a nonexistent key still
+            returns a URL). A Zarr root, a regular file asset, and non-Zarr
+            paths behave the same in both modes.
+        """
+        return sync(self.loop, self._resolve_s3_url, path, validate)
 
     # ------------------------------------------------------------------
     #   Path handling
@@ -453,13 +471,50 @@ class DandiFileSystem(AsyncFileSystem):
         node = await self._find(client, session, dandiset_id, version_id, location)
         return self._require_file_url(node, path)
 
+    async def _resolve_s3_url(self, path: Any, validate: bool = True) -> str:
+        (
+            instance,
+            dandiset_id,
+            version_id,
+            location,
+            client,
+            session,
+        ) = await self._prepare(path)
+        node = await self._find(client, session, dandiset_id, version_id, location)
+        if validate and node.kind == "zarr" and node.zarr_key:
+            if node.url is None:
+                raise FileNotFoundError(str(path))
+            ftype, _ = await self._zarr_stat(client, session, node)
+            if ftype is None:
+                raise FileNotFoundError(str(path))
+            if ftype == "directory":
+                return node.url.rstrip("/") + "/"
+            return node.url
+        return self._require_any_url(node, path)
+
     def _require_file_url(self, node: _Node, path: Any) -> str:
+        """Byte-read URL: a Zarr root has no single readable file."""
         if node.kind == "file":
             return node.url
         if node.kind == "zarr" and node.zarr_key:
             if node.url is None:
                 raise FileNotFoundError(str(path))
             return node.url
+        if node.kind == "missing":
+            raise FileNotFoundError(str(path))
+        raise IsADirectoryError(str(path))
+
+    def _require_any_url(self, node: _Node, path: Any) -> str:
+        """S3 URL: a Zarr root resolves to its store base (prefix ending in ``/``)."""
+        if node.kind == "file":
+            return node.url
+        if node.kind == "zarr":
+            if node.url is None:
+                raise FileNotFoundError(str(path))
+            if node.zarr_key:
+                return node.url
+            # Zarr root: the S3 store base, kept as a prefix with a trailing slash.
+            return node.url.rstrip("/") + "/"
         if node.kind == "missing":
             raise FileNotFoundError(str(path))
         raise IsADirectoryError(str(path))
