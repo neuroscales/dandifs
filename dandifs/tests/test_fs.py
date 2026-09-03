@@ -3,7 +3,7 @@
 import pytest
 
 from dandifs import DandiFileSystem
-from dandifs.tests.conftest import DANDISET, VERSION, ZARR_ID
+from dandifs.tests.conftest import DANDISET, S3, VERSION, ZARR_ID
 
 ROOT = "dandi://dandi/{}@{}".format(DANDISET, VERSION)
 
@@ -181,6 +181,100 @@ def test_s3_url_property(mock_archive):
     fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
     url = fs.s3_url("data/image.zarr/0/0")
     assert url.endswith("/zarr/{}/0/0".format(ZARR_ID))
+
+
+def test_s3_url_zarr_root(mock_archive):
+    # s3_url on a Zarr root returns the store S3 base, keeping the trailing slash
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("data/image.zarr")
+    assert url == "{}/zarr/{}/".format(S3, ZARR_ID)
+
+
+def test_s3_url_inside_zarr(mock_archive):
+    # s3_url on a file inside a Zarr joins the base and key without doubling "/"
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("data/image.zarr/0/.zarray")
+    assert url == "{}/zarr/{}/0/.zarray".format(S3, ZARR_ID)
+
+
+def test_s3_url_inside_zarr_directory_validated(mock_archive):
+    # validate=True: a directory inside a Zarr yields the prefix with trailing "/"
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("data/image.zarr/0")
+    assert url == "{}/zarr/{}/0/".format(S3, ZARR_ID)
+
+
+def test_s3_url_inside_zarr_missing_validated(mock_archive):
+    # validate=True: a nonexistent in-Zarr key raises FileNotFoundError
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    with pytest.raises(FileNotFoundError):
+        fs.s3_url("data/image.zarr/nope/nope")
+
+
+def test_s3_url_inside_zarr_directory_fast(mock_archive):
+    # validate=False: a subdirectory gets no trailing slash and no listing call
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("data/image.zarr/0", validate=False)
+    assert url == "{}/zarr/{}/0".format(S3, ZARR_ID)
+
+
+def test_s3_url_inside_zarr_missing_fast(mock_archive):
+    # validate=False: a nonexistent key still returns a constructed URL
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("data/image.zarr/nope/nope", validate=False)
+    assert url == "{}/zarr/{}/nope/nope".format(S3, ZARR_ID)
+
+
+def test_s3_url_regular_file(mock_archive):
+    # s3_url on a regular (non-Zarr) file asset returns its direct S3 url
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    url = fs.s3_url("sub-01/anat/scan.json")
+    assert url == "{}/blobs/blob-json".format(S3)
+
+
+def test_s3_url_missing_raises(mock_archive):
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    with pytest.raises(FileNotFoundError):
+        fs.s3_url("sub-01/anat/missing.json")
+
+
+def test_s3_url_plain_directory_raises(mock_archive):
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    with pytest.raises(IsADirectoryError):
+        fs.s3_url("sub-01")
+
+
+async def test_cat_file_zarr_root_raises(mock_archive):
+    fs = _afs()
+    try:
+        with pytest.raises(IsADirectoryError):
+            await fs._cat_file("data/image.zarr")
+    finally:
+        await _close(fs)
+
+
+async def test_cat_file_missing_raises(mock_archive):
+    fs = _afs()
+    try:
+        with pytest.raises(FileNotFoundError):
+            await fs._cat_file("sub-01/anat/missing.json")
+    finally:
+        await _close(fs)
+
+
+async def test_cat_file_plain_directory_raises(mock_archive):
+    fs = _afs()
+    try:
+        with pytest.raises(IsADirectoryError):
+            await fs._cat_file("sub-01")
+    finally:
+        await _close(fs)
+
+
+def test_open_zarr_root_raises(mock_archive):
+    fs = DandiFileSystem(DANDISET, skip_instance_cache=True)
+    with pytest.raises(IsADirectoryError):
+        fs.open("data/image.zarr", "rb")
 
 
 def test_sync_cat(mock_archive):
